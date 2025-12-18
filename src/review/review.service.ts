@@ -146,11 +146,6 @@ ${patch}
         \`\`\`diff
         ${diff}
         \`\`\`
-
-        For context, here is the current state of the file after the changes:
-        \`\`\`
-        ${newContent}
-        \`\`\`
         `;
 
       const systemPrompt = ReviewPrompt.reviewSystemInstruction(
