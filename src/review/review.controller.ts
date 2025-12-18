@@ -42,85 +42,10 @@ export class ReviewController {
   async doReviewController(req: Request, res: Response, next: NextFunction) {
     validate(doReviewPayloadSchema, req.body);
 
-    const pullRequestModel = mongoose.model<IPullRequest>(
-      ModelNames.PullRequest
-    );
-    const commentModel = mongoose.model<IPRComment>(ModelNames.Comment);
-
-    const repoName = req.body.repoName;
-    const pullRequestId = req.body.prId;
-    const modelName = req.body.modelName;
-
-    const repoId = RepoNameIdMap[repoName];
-    const localDir = RepoNameLocalDirMap[repoName];
-    const projectOverview = RepoNameOverviewContent[repoName];
-    if (!repoId || !localDir || !projectOverview) {
-      return next(new BadRequestError("invalid repoName"));
-    }
-
-    const doesExist = await pullRequestModel.findOne({ pullRequestId });
-    if (doesExist) {
-      return next(
-        new BadRequestError("PR already reviewed, try re-reviewing it")
-      );
-    }
-
-    const pullRequestDetails = await this._azureService.getPRDetails(
-      repoId,
-      pullRequestId
-    );
-    const targetBranch =
-      pullRequestDetails.sourceBranch.split("refs/heads/")[1];
-    const baseBranch = pullRequestDetails.targetBranch.split("refs/heads/")[1];
-    const repoService = new LocalRepoService(localDir);
-
-    const reviewOpts: GetReviewOptions = {
-      baseBranch,
-      targetBranch,
-      modelName,
-    };
-    const result = await this._reviewService.getReview(
-      projectOverview,
-      reviewOpts,
-      repoService
-    );
-    for (const res of result) {
-      for (const r of res) {
-        const comment: CommentDetails = {
-          content: `**line**: ${r.lineNumber}\n**issue**: ${r.issue}\n**reason**: ${r.reason}\n**recommendation**: ${r.recommendation}`,
-          filePath: r.filepath,
-          line: r.lineNumber,
-        };
-        const { threadId, commentId } = await this._azureService.addPRComment(
-          repoId,
-          pullRequestId,
-          comment
-        );
-        await commentModel.insertOne({
-          repoId: repoId,
-          threadId,
-          commentId,
-          prId: pullRequestId,
-          filePath: r.filepath,
-          lineNumber: r.lineNumber,
-          issue: r.issue,
-          reason: r.reason,
-          recommendation: r.recommendation,
-        });
-      }
-    }
-    pullRequestDetails.status = "reviewed";
-    await pullRequestModel.insertOne(pullRequestDetails);
-    return res.status(statusCodes.OK).json({ message: "review", result });
-  }
-
-  async doReviewControllerV2(req: Request, res: Response, next: NextFunction) {
-    validate(doReviewPayloadSchema, req.body);
-
-    const pullRequestModel = mongoose.model<IPullRequest>(
-      ModelNames.PullRequest
-    );
-    const commentModel = mongoose.model<IPRComment>(ModelNames.Comment);
+    // const pullRequestModel = mongoose.model<IPullRequest>(
+    //   ModelNames.PullRequest
+    // );
+    // const commentModel = mongoose.model<IPRComment>(ModelNames.Comment);
 
     const repoName = req.body.repoName;
     const pullRequestId = req.body.prId;
@@ -131,13 +56,6 @@ export class ReviewController {
     if (!repoId || !projectOverview) {
       return next(new BadRequestError("invalid repoName"));
     }
-
-    // const doesExist = await pullRequestModel.findOne({ pullRequestId });
-    // if (doesExist) {
-    //   return next(
-    //     new BadRequestError("PR already reviewed, try re-reviewing it")
-    //   );
-    // }
 
     // Set up SSE
     res.setHeader("Content-Type", "text/event-stream");
@@ -189,7 +107,7 @@ export class ReviewController {
         });
       });
 
-      const result = await this._reviewService.getReviewV2(
+      const result = await this._reviewService.getReview(
         azureService,
         { modelName: modelName, repoId: repoId, repoOverview: projectOverview },
         changedFiles,

@@ -1,7 +1,17 @@
-
 export abstract class RepoService {
-    abstract diff(baseBranch: string, targetBranch: string): Promise<string>;
-    abstract diffFile(baseBranch: string, targetBranch: string, fileName: string): Promise<string>;
-    abstract getChangedFiles(baseBranch: string, targetBranch: string): Promise<string[]>;
+  abstract getFileDiff(
+    path: string,
+    initialFileId: string,
+    modifiedFileId: string,
+    repoId: string
+  ): Promise<{
+    diff: string;
+    oldContent: string;
+    newContent: string;
+    path: string;
+  }>;
+  abstract getChangedFilesInPR(
+    repoId: string,
+    prId: number
+  ): Promise<{ path: string; initialFileId: string; modifiedFileId: string }[]>;
 }
-

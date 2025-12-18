@@ -19,22 +19,93 @@ export interface CommentDetails {
 }
 
 export class AzureRepoService extends RepoService {
-  private _connection: azdev.WebApi;
-  public git: IGitApi;
+  private _connection!: azdev.WebApi;
+  public git!: IGitApi;
+  private tenantId: string;
+  private clientId: string;
+  private clientSecret: string;
+  private orgUrl: string;
+  private currentToken: string | null = null;
+  private tokenExpiry: number = 0;
 
   constructor() {
     super();
-    // const PROJECT_NAME = "DXP - Digital Experience Platform";
-    // const REPO_NAME = "DXP.Web";
-    const ORG_URL = env.AZURE_ORG_URL;
-    const PAT_TOKEN = env.AZURE_PERSONAL_ACCESS_TOKEN;
-    const authHandler = azdev.getPersonalAccessTokenHandler(PAT_TOKEN);
-    this._connection = new azdev.WebApi(ORG_URL, authHandler);
+    this.orgUrl = env.AZURE_ORG_URL;
+    this.tenantId = env.AZURE_TENANT_ID;
+    this.clientId = env.AZURE_CLIENT_ID;
+    this.clientSecret = env.AZURE_CLIENT_SECRET;
   }
 
   // Should call immediately after construction.
   async init() {
+    await this.refreshToken();
     this.git = await this._connection.getGitApi();
+  }
+
+  private async ensureValidToken(): Promise<void> {
+    // Check if token is expired or will expire in the next 5 minutes
+    if (!this.currentToken || Date.now() >= this.tokenExpiry - 5 * 60 * 1000) {
+      await this.refreshToken();
+    }
+  }
+
+  private async refreshToken(): Promise<void> {
+    const tokenData = await this.getServicePrincipalToken(
+      this.tenantId,
+      this.clientId,
+      this.clientSecret
+    );
+    this.currentToken = tokenData.token;
+    this.tokenExpiry = tokenData.expiresAt;
+
+    const authHandler = azdev.getBearerHandler(this.currentToken);
+    this._connection = new azdev.WebApi(this.orgUrl, authHandler);
+  }
+
+  private async getServicePrincipalToken(
+    tenantId: string,
+    clientId: string,
+    clientSecret: string
+  ): Promise<{ token: string; expiresAt: number }> {
+    const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const scope = "499b84ac-1321-427f-aa17-267ca6975798/.default"; // Azure DevOps resource ID
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "client_credentials",
+      scope: scope,
+    });
+
+    try {
+      const response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to get token: ${response.status} - ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      // expires_in is in seconds, convert to milliseconds and add to current time
+      const expiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+
+      return {
+        token: data.access_token,
+        expiresAt: expiresAt,
+      };
+    } catch (error) {
+      console.error("Error obtaining service principal token:", error);
+      await this.ensureValidToken();
+      throw error;
+    }
   }
 
   //Used to get changed files in a PR
@@ -73,6 +144,7 @@ export class AzureRepoService extends RepoService {
     modifiedFileId: string,
     repoId: string
   ) {
+    await this.ensureValidToken();
     const [newFileStream, oldFileStream] = await Promise.all([
       this.git.getBlobContent(repoId, modifiedFileId),
       this.git.getBlobContent(repoId, initialFileId),
@@ -101,6 +173,7 @@ export class AzureRepoService extends RepoService {
   }
 
   async getPRDetails(repoId: string, prId: number) {
+    await this.ensureValidToken();
     const details = await this.git.getPullRequest(repoId, prId);
 
     return {
@@ -115,6 +188,7 @@ export class AzureRepoService extends RepoService {
   }
 
   async addPRComment(repoId: string, prId: number, cmnt: CommentDetails) {
+    await this.ensureValidToken();
     const pr = await this.git.getPullRequest(repoId, prId);
     const comment: Comment = {
       content: cmnt.content,
@@ -132,6 +206,7 @@ export class AzureRepoService extends RepoService {
   }
 
   async getPRReplies(repoId: string, prId: number) {
+    await this.ensureValidToken();
     const threads = await this.git.getThreads(repoId, prId);
     return threads;
   }

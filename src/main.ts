@@ -11,6 +11,7 @@ import { ReviewService, ReviewServiceOptions } from "./review/review.service";
 import { env } from "./lib/config";
 import { ModelNames } from "./lib/db";
 import { errorMiddleware } from "./lib/error.middleware";
+import { apiKeyAuth } from "./lib/auth.middleware";
 
 import { prCommentSchema } from "./prComments/prComment.model";
 import { prSchema } from "./pullRequest/pullRequest.model";
@@ -33,10 +34,13 @@ async function main() {
   app.use(express.json());
   app.use(morgan("dev"));
 
+  // Apply API key authentication to all routes
+  app.use(apiKeyAuth);
+
   app.post(
     "/review",
     async (req, res, next) =>
-      await reviewController.doReviewControllerV2(req, res, next)
+      await reviewController.doReviewController(req, res, next)
   );
   app.post(
     "/re-review",
@@ -58,23 +62,7 @@ async function main() {
   });
 }
 
-const uri = env.DB_URI;
-
-mongoose
-  .connect(uri)
-  .then(() => {
-    console.log("connected to mongodb");
-    // register all models
-    mongoose.model(ModelNames.Comment, prCommentSchema);
-    mongoose.model(ModelNames.PullRequest, prSchema);
-
-    // start server
-    main().catch((err) => {
-      console.error("failed to start the application");
-      console.error(err);
-    });
-  })
-  .catch((err) => {
-    console.error("failed to connect to mongodb");
-    console.error(err);
-  });
+main().catch((err) => {
+  console.error("failed to start the application");
+  console.error(err);
+});
