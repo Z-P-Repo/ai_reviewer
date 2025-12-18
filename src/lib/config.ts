@@ -4,8 +4,10 @@ import { formatZodError } from "@schema-hub/zod-error-formatter";
 
 const configSchema = z.object({
   // Third party
-  AZURE_PERSONAL_ACCESS_TOKEN: z.string(),
   AZURE_ORG_URL: z.string(),
+  AZURE_TENANT_ID: z.string(),
+  AZURE_CLIENT_ID: z.string(),
+  AZURE_CLIENT_SECRET: z.string(),
   LLM_BASE_URL: z.string().url(),
   LLM_API_KEY: z.string(),
   REPO_SERVICE_LOCAL_DIR: z.string(),

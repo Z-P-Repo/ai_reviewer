@@ -40,7 +40,7 @@ async function main() {
   app.post(
     "/review",
     async (req, res, next) =>
-      await reviewController.doReviewControllerV2(req, res, next)
+      await reviewController.doReviewController(req, res, next)
   );
   app.post(
     "/re-review",
@@ -62,23 +62,7 @@ async function main() {
   });
 }
 
-const uri = env.DB_URI;
-
-mongoose
-  .connect(uri)
-  .then(() => {
-    console.log("connected to mongodb");
-    // register all models
-    mongoose.model(ModelNames.Comment, prCommentSchema);
-    mongoose.model(ModelNames.PullRequest, prSchema);
-
-    // start server
-    main().catch((err) => {
-      console.error("failed to start the application");
-      console.error(err);
-    });
-  })
-  .catch((err) => {
-    console.error("failed to connect to mongodb");
-    console.error(err);
-  });
+main().catch((err) => {
+  console.error("failed to start the application");
+  console.error(err);
+});

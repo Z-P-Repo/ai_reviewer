@@ -52,66 +52,9 @@ export class ReviewService {
     } else {
       throw new Error("invalid llm provider type");
     }
-
-    // const { repoServiceType, localRepoDir } = opts;
-    // if (repoServiceType == "local") {
-    // this._repoService = new LocalRepoService(localRepoDir);
-    // } else {
-    // throw new Error("invalid repo service type");
-    // }
   }
 
   public async getReview(
-    repoOverview: string,
-    opts: GetReviewOptions,
-    repoService: LocalRepoService
-  ) {
-    const { baseBranch, targetBranch } = opts;
-    const fileChanges = await repoService.getChangedFiles(
-      baseBranch,
-      targetBranch
-    );
-
-    const result: z.infer<typeof responseSchema>[] = [];
-
-    for (const file of fileChanges) {
-      const patch = await repoService.diffFile(baseBranch, targetBranch, file);
-      // const fileContent = fs.readFileSync(`${repoService.projectDir}/${file}`)
-      const userInstruction = `
-The Pull Request changes for this file are shown in the diff below. Review ONLY the lines that were changed (marked with + or -):
-\`\`\`diff
-${patch}
-\`\`\`
-`;
-
-      const systemPrompt = ReviewPrompt.reviewSystemInstruction(repoOverview);
-
-      const messages: LLMMessage[] = [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userInstruction,
-        },
-      ];
-      // console.log(messages);
-      // const response = await this._llmService.sendChat(opts.modelName, messages);
-      const response = await this._llmService.sendChatWithJsonSchema(
-        opts.modelName,
-        messages,
-        responseJsonSchema
-      );
-      const content: z.infer<typeof responseSchema> = JSON.parse(
-        response.content
-      );
-      result.push(content);
-    }
-    return result;
-  }
-
-  public async getReviewV2(
     azureService: AzureRepoService,
     opts: GetReviewOptionsV2,
     changedFiles: {
