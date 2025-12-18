@@ -11,6 +11,7 @@ import { ReviewService, ReviewServiceOptions } from "./review/review.service";
 import { env } from "./lib/config";
 import { ModelNames } from "./lib/db";
 import { errorMiddleware } from "./lib/error.middleware";
+import { apiKeyAuth } from "./lib/auth.middleware";
 
 import { prCommentSchema } from "./prComments/prComment.model";
 import { prSchema } from "./pullRequest/pullRequest.model";
@@ -32,6 +33,9 @@ async function main() {
 
   app.use(express.json());
   app.use(morgan("dev"));
+
+  // Apply API key authentication to all routes
+  app.use(apiKeyAuth);
 
   app.post(
     "/review",
