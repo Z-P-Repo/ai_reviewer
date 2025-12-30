@@ -1,4 +1,3 @@
-// require("express-async-errors");
 import "./lib/config";
 import express from "express";
 import morgan from "morgan";

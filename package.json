@@ -22,7 +22,6 @@
     "diff": "^8.0.2",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
-    "express-async-errors": "^3.1.1",
     "http-status-codes": "^2.3.0",
     "mongoose": "^8.16.2",
     "morgan": "^1.10.0",
