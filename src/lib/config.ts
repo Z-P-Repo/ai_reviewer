@@ -10,12 +10,8 @@ const configSchema = z.object({
   AZURE_CLIENT_SECRET: z.string(),
   LLM_BASE_URL: z.string().url(),
   LLM_API_KEY: z.string(),
-  REPO_SERVICE_LOCAL_DIR: z.string(),
   // ZPR server
   ZPR_PORT: z.coerce.number(),
-  DB_URI: z.string(),
-  DXP_LOCAL_DIR: z.string(),
-  INSIGHTS_NODE_API_LOCAL_DIR: z.string(),
   // Authentication
   API_KEY: z.string(),
 });
